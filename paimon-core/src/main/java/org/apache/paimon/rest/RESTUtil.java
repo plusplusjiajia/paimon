@@ -70,6 +70,11 @@ public class RESTUtil {
         return builder.build();
     }
 
+    public static Options getOptionsFromOptionsAndToken(Options options, RESTToken token) {
+        // the original options should not be overwritten
+        return new Options(merge(token.token(), options.toMap()));
+    }
+
     public static String encodeString(String toEncode) {
         Preconditions.checkArgument(toEncode != null, "Invalid string to encode: null");
         try {

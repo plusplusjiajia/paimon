@@ -18,6 +18,8 @@
 
 package org.apache.paimon.rest;
 
+import org.apache.paimon.options.Options;
+
 import org.junit.jupiter.api.Test;
 
 import java.util.HashMap;
@@ -36,6 +38,7 @@ public class RESTUtilTest {
             Map<String, String> updates = new HashMap<>();
             updates.put("key2", "update2");
             Map<String, String> result = RESTUtil.merge(targets, updates);
+            assertEquals(result.size(), 2);
             assertEquals(result.get("key1"), "default1");
             assertEquals(result.get("key2"), "update2");
         }
@@ -47,6 +50,7 @@ public class RESTUtilTest {
             updates.put("key1", "default1");
             updates.put("key2", "update2");
             Map<String, String> result = RESTUtil.merge(targets, updates);
+            assertEquals(result.size(), 2);
             assertEquals(result.get("key1"), "default1");
             assertEquals(result.get("key2"), "update2");
         }
@@ -56,6 +60,7 @@ public class RESTUtilTest {
             targets.put("key2", "default2");
             Map<String, String> updates = new HashMap<>();
             Map<String, String> result = RESTUtil.merge(targets, updates);
+            assertEquals(result.size(), 2);
             assertEquals(result.get("key1"), "default1");
             assertEquals(result.get("key2"), "default2");
         }
@@ -64,6 +69,7 @@ public class RESTUtilTest {
             Map<String, String> updates = new HashMap<>();
             updates.put("key2", "update2");
             Map<String, String> result = RESTUtil.merge(targets, updates);
+            assertEquals(result.size(), 1);
             assertEquals(result.get("key2"), "update2");
         }
         {
@@ -77,6 +83,67 @@ public class RESTUtilTest {
             Map<String, String> updates = null;
             Map<String, String> result = RESTUtil.merge(targets, updates);
             assertEquals(result.size(), 0);
+        }
+    }
+
+    @Test
+    public void testGetOptionsFromOptionsAndToken() {
+        {
+            Options options = new Options();
+            options.set("key1", "default1");
+            Map<String, String> token = new HashMap<>();
+            token.put("key1", "update1");
+            token.put("key2", "default2");
+            token.put("key3", "default3");
+            RESTToken restToken = new RESTToken(token, System.currentTimeMillis());
+            Options result = RESTUtil.getOptionsFromOptionsAndToken(options, restToken);
+            assertEquals(result.toMap().size(), 3);
+            assertEquals(result.get("key1"), "default1");
+            assertEquals(result.get("key2"), "default2");
+            assertEquals(result.get("key3"), "default3");
+        }
+        {
+            Options options = new Options();
+            options.set("key1", "default1");
+            Map<String, String> token = new HashMap<>();
+            token.put("key1", "default1");
+            token.put("key2", "default2");
+            token.put("key3", "default3");
+            RESTToken restToken = new RESTToken(token, System.currentTimeMillis());
+            Options result = RESTUtil.getOptionsFromOptionsAndToken(options, restToken);
+            assertEquals(result.toMap().size(), 3);
+            assertEquals(result.get("key1"), "default1");
+            assertEquals(result.get("key2"), "default2");
+            assertEquals(result.get("key3"), "default3");
+        }
+        {
+            Options options = new Options();
+            options.set("key1", "default1");
+            Map<String, String> token = new HashMap<>();
+            token.put("key2", "default2");
+            token.put("key3", "default3");
+            RESTToken restToken = new RESTToken(token, System.currentTimeMillis());
+            Options result = RESTUtil.getOptionsFromOptionsAndToken(options, restToken);
+            assertEquals(result.toMap().size(), 3);
+            assertEquals(result.get("key1"), "default1");
+            assertEquals(result.get("key2"), "default2");
+            assertEquals(result.get("key3"), "default3");
+        }
+        {
+            Options options = new Options();
+            options.set("key1", "default1");
+            Map<String, String> token = new HashMap<>();
+            RESTToken restToken = new RESTToken(token, System.currentTimeMillis());
+            Options result = RESTUtil.getOptionsFromOptionsAndToken(options, restToken);
+            assertEquals(result.toMap().size(), 1);
+            assertEquals(result.get("key1"), "default1");
+        }
+        {
+            Options options = new Options();
+            Map<String, String> token = new HashMap<>();
+            RESTToken restToken = new RESTToken(token, System.currentTimeMillis());
+            Options result = RESTUtil.getOptionsFromOptionsAndToken(options, restToken);
+            assertEquals(result.toMap().size(), 0);
         }
     }
 }
