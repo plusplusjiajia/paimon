@@ -45,7 +45,6 @@ import org.apache.paimon.reader.RecordReader;
 import org.apache.paimon.schema.SchemaManager;
 import org.apache.paimon.schema.TableSchema;
 import org.apache.paimon.table.source.DataSplit;
-import org.apache.paimon.types.DataField;
 import org.apache.paimon.types.RowType;
 import org.apache.paimon.utils.FileStorePathFactory;
 import org.apache.paimon.utils.FormatReaderMapping;
@@ -63,9 +62,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.function.Supplier;
 
 import static org.apache.paimon.predicate.PredicateBuilder.splitAnd;
+import static org.apache.paimon.table.SpecialFields.rowTypeWithRowLineage;
 
 /** A {@link SplitRead} to read raw file directly from {@link DataSplit}. */
 public class RawFileSplitRead implements SplitRead<InternalRow> {
@@ -130,16 +129,16 @@ public class RawFileSplitRead implements SplitRead<InternalRow> {
 
     @Override
     public RecordReader<InternalRow> createReader(DataSplit split) throws IOException {
-        if (split.beforeFiles().size() > 0) {
+        if (!split.beforeFiles().isEmpty()) {
             LOG.info("Ignore split before files: {}", split.beforeFiles());
         }
 
         List<DataFileMeta> files = split.dataFiles();
         DeletionVector.Factory dvFactory =
                 DeletionVector.factory(fileIO, files, split.deletionFiles().orElse(null));
-        List<IOExceptionSupplier<DeletionVector>> dvFactories = new ArrayList<>();
+        Map<String, IOExceptionSupplier<DeletionVector>> dvFactories = new HashMap<>();
         for (DataFileMeta file : files) {
-            dvFactories.add(() -> dvFactory.create(file.fileName()).orElse(null));
+            dvFactories.put(file.fileName(), () -> dvFactory.create(file.fileName()).orElse(null));
         }
         return createReader(split.partition(), split.bucket(), split.dataFiles(), dvFactories);
     }
@@ -148,53 +147,63 @@ public class RawFileSplitRead implements SplitRead<InternalRow> {
             BinaryRow partition,
             int bucket,
             List<DataFileMeta> files,
-            @Nullable List<IOExceptionSupplier<DeletionVector>> dvFactories)
+            @Nullable Map<String, IOExceptionSupplier<DeletionVector>> dvFactories)
             throws IOException {
         DataFilePathFactory dataFilePathFactory =
                 pathFactory.createDataFilePathFactory(partition, bucket);
         List<ReaderSupplier<InternalRow>> suppliers = new ArrayList<>();
 
-        List<DataField> readTableFields = readRowType.getFields();
         Builder formatReaderMappingBuilder =
                 new Builder(
                         formatDiscover,
-                        readTableFields,
-                        TableSchema::fields,
-                        filters,
-                        rowTrackingEnabled);
+                        readRowType.getFields(),
+                        schema -> {
+                            if (rowTrackingEnabled) {
+                                return rowTypeWithRowLineage(schema.logicalRowType(), true)
+                                        .getFields();
+                            }
+                            return schema.fields();
+                        },
+                        filters);
 
-        for (int i = 0; i < files.size(); i++) {
-            DataFileMeta file = files.get(i);
-            String formatIdentifier = DataFilePathFactory.formatIdentifier(file.fileName());
-            long schemaId = file.schemaId();
-
-            Supplier<FormatReaderMapping> formatSupplier =
-                    () ->
-                            formatReaderMappingBuilder.build(
-                                    formatIdentifier,
-                                    schema,
-                                    schemaId == schema.id()
-                                            ? schema
-                                            : schemaManager.schema(schemaId));
-
-            FormatReaderMapping formatReaderMapping =
-                    formatReaderMappings.computeIfAbsent(
-                            new FormatKey(file.schemaId(), formatIdentifier),
-                            key -> formatSupplier.get());
-
-            IOExceptionSupplier<DeletionVector> dvFactory =
-                    dvFactories == null ? null : dvFactories.get(i);
+        for (DataFileMeta file : files) {
             suppliers.add(
-                    () ->
-                            createFileReader(
-                                    partition,
-                                    file,
-                                    dataFilePathFactory,
-                                    formatReaderMapping,
-                                    dvFactory));
+                    createFileReader(
+                            partition,
+                            dataFilePathFactory,
+                            file,
+                            formatReaderMappingBuilder,
+                            dvFactories));
         }
 
         return ConcatRecordReader.create(suppliers);
+    }
+
+    private ReaderSupplier<InternalRow> createFileReader(
+            BinaryRow partition,
+            DataFilePathFactory dataFilePathFactory,
+            DataFileMeta file,
+            Builder formatBuilder,
+            @Nullable Map<String, IOExceptionSupplier<DeletionVector>> dvFactories) {
+        String formatIdentifier = DataFilePathFactory.formatIdentifier(file.fileName());
+        long schemaId = file.schemaId();
+
+        FormatReaderMapping formatReaderMapping =
+                formatReaderMappings.computeIfAbsent(
+                        new FormatKey(file.schemaId(), formatIdentifier),
+                        key ->
+                                formatBuilder.build(
+                                        formatIdentifier,
+                                        schema,
+                                        schemaId == schema.id()
+                                                ? schema
+                                                : schemaManager.schema(schemaId)));
+
+        IOExceptionSupplier<DeletionVector> dvFactory =
+                dvFactories == null ? null : dvFactories.get(file.fileName());
+        return () ->
+                createFileReader(
+                        partition, file, dataFilePathFactory, formatReaderMapping, dvFactory);
     }
 
     private FileRecordReader<InternalRow> createFileReader(

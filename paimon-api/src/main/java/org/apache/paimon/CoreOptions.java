@@ -381,7 +381,7 @@ public class CoreOptions implements Serializable {
                             "The default partition name in case the dynamic partition"
                                     + " column value is null/empty string.");
 
-    public static final ConfigOption<Boolean> PARTITION_GENERATE_LEGCY_NAME =
+    public static final ConfigOption<Boolean> PARTITION_GENERATE_LEGACY_NAME =
             key("partition.legacy-name")
                     .booleanType()
                     .defaultValue(true)
@@ -704,7 +704,7 @@ public class CoreOptions implements Serializable {
                     .intType()
                     .defaultValue(-1)
                     .withDescription(
-                            "The end of off-peak hours, expressed as an integer between 0 and 23, inclusive. Set"
+                            "The end of off-peak hours, expressed as an integer between 0 and 23, exclusive. Set"
                                     + " to -1 to disable off-peak.");
 
     public static final ConfigOption<Integer> COMPACTION_OFFPEAK_RATIO =
@@ -1931,6 +1931,12 @@ public class CoreOptions implements Serializable {
                     .defaultValue(false)
                     .withDescription("Whether enable unique row id for append table.");
 
+    public static final ConfigOption<Boolean> DATA_EVOLUTION_ENABLED =
+            key("data-evolution.enabled")
+                    .booleanType()
+                    .defaultValue(false)
+                    .withDescription("Whether enable data evolution for row tracking table.");
+
     public static final ConfigOption<Boolean> SNAPSHOT_IGNORE_EMPTY_COMMIT =
             key("snapshot.ignore-empty-commit")
                     .booleanType()
@@ -2023,7 +2029,7 @@ public class CoreOptions implements Serializable {
     }
 
     public boolean legacyPartitionName() {
-        return options.get(PARTITION_GENERATE_LEGCY_NAME);
+        return options.get(PARTITION_GENERATE_LEGACY_NAME);
     }
 
     public boolean sortBySize() {
@@ -2893,6 +2899,10 @@ public class CoreOptions implements Serializable {
 
     public boolean rowTrackingEnabled() {
         return options.get(ROW_TRACKING_ENABLED);
+    }
+
+    public boolean dataEvolutionEnabled() {
+        return options.get(DATA_EVOLUTION_ENABLED);
     }
 
     public boolean prepareCommitWaitCompaction() {

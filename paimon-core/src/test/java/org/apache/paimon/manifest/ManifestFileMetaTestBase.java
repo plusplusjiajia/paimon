@@ -97,6 +97,7 @@ public abstract class ManifestFileMetaTestBase {
                         FileSource.APPEND,
                         null,
                         null,
+                        null,
                         null));
     }
 
@@ -149,7 +150,7 @@ public abstract class ManifestFileMetaTestBase {
                                 CoreOptions.FILE_FORMAT.defaultValue(),
                                 CoreOptions.DATA_FILE_PREFIX.defaultValue(),
                                 CoreOptions.CHANGELOG_FILE_PREFIX.defaultValue(),
-                                CoreOptions.PARTITION_GENERATE_LEGCY_NAME.defaultValue(),
+                                CoreOptions.PARTITION_GENERATE_LEGACY_NAME.defaultValue(),
                                 CoreOptions.FILE_SUFFIX_INCLUDE_COMPRESSION.defaultValue(),
                                 CoreOptions.FILE_COMPRESSION.defaultValue(),
                                 null,
@@ -281,6 +282,7 @@ public abstract class ManifestFileMetaTestBase {
                         0L,
                         null,
                         FileSource.APPEND,
+                        null,
                         null,
                         null));
     }

@@ -27,7 +27,7 @@ from typing import Dict, Optional
 
 from pypaimon.common.config import CatalogOptions
 
-from .token_loader import DLFToken, DLFTokenLoader
+from .token_loader import DLFToken, DLFTokenLoader, DLFTokenLoaderFactory
 from .typedef import RESTAuthParameter
 
 
@@ -69,7 +69,8 @@ class AuthProviderFactory:
         elif provider == 'dlf':
             return DLFAuthProvider(
                 options.get(CatalogOptions.DLF_REGION),
-                DLFToken.from_options(options)
+                DLFToken.from_options(options),
+                DLFTokenLoaderFactory.create_token_loader(options)
             )
         raise ValueError('Unknown auth provider')
 

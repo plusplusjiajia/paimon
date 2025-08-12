@@ -16,24 +16,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 """
 from pathlib import Path
-from typing import Dict, List, Optional, Union, Callable, Any
+from typing import Any, Callable, Dict, List, Optional, Union
 from urllib.parse import urlparse
 
-
-from pypaimon.api import RESTApi, CatalogOptions
-from pypaimon.api.api_response import PagedList, GetTableResponse
-
-from pypaimon.common.file_io import FileIO
-
+from pypaimon.api import CatalogOptions, RESTApi
+from pypaimon.api.api_response import GetTableResponse, PagedList
 from pypaimon.api.options import Options
 from pypaimon.catalog.catalog import Catalog
 from pypaimon.catalog.catalog_context import CatalogContext
-
 from pypaimon.catalog.database import Database
 from pypaimon.catalog.property_change import PropertyChange
 from pypaimon.catalog.rest.rest_token_file_io import RESTTokenFileIO
 from pypaimon.catalog.table_metadata import TableMetadata
 from pypaimon.common.core_options import CoreOptions
+from pypaimon.common.file_io import FileIO
 from pypaimon.common.identifier import Identifier
 from pypaimon.schema.schema import Schema
 from pypaimon.schema.table_schema import TableSchema
@@ -106,6 +102,11 @@ class RESTCatalog(Catalog):
             identifier = Identifier.from_string(identifier)
         self.api.create_table(identifier, schema)
 
+    def drop_table(self, identifier: Union[str, Identifier]):
+        if not isinstance(identifier, Identifier):
+            identifier = Identifier.from_string(identifier)
+        self.api.drop_table(identifier)
+
     def load_table_metadata(self, identifier: Identifier) -> TableMetadata:
         response = self.api.get_table(identifier)
         return self.to_table_metadata(identifier.get_database_name(), response)
@@ -156,8 +157,8 @@ class RESTCatalog(Catalog):
                             catalog_env)
         return table
 
-    def create(self,
-               file_io: FileIO,
+    @staticmethod
+    def create(file_io: FileIO,
                table_path: Path,
                table_schema: TableSchema,
                catalog_environment: CatalogEnvironment
