@@ -62,14 +62,6 @@ public class TransformPredicate implements Predicate {
         return transform;
     }
 
-    public LeafFunction function() {
-        return function;
-    }
-
-    public List<Object> literals() {
-        return literals;
-    }
-
     public TransformPredicate copyWithNewInputs(List<Object> newInputs) {
         return TransformPredicate.of(transform.copyWithNewInputs(newInputs), function, literals);
     }
