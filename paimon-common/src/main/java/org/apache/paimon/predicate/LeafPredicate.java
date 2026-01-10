@@ -27,6 +27,9 @@ import org.apache.paimon.io.DataInputViewStreamWrapper;
 import org.apache.paimon.io.DataOutputViewStreamWrapper;
 import org.apache.paimon.types.DataType;
 
+import org.apache.paimon.shade.jackson2.com.fasterxml.jackson.annotation.JsonCreator;
+import org.apache.paimon.shade.jackson2.com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
@@ -51,8 +54,11 @@ public class LeafPredicate extends TransformPredicate {
         this(new FieldTransform(new FieldRef(fieldIndex, fieldName, type)), function, literals);
     }
 
+    @JsonCreator
     public LeafPredicate(
-            FieldTransform fieldTransform, LeafFunction function, List<Object> literals) {
+            @JsonProperty(TransformPredicate.FIELD_TRANSFORM) FieldTransform fieldTransform,
+            @JsonProperty(TransformPredicate.FIELD_FUNCTION) LeafFunction function,
+            @JsonProperty(TransformPredicate.FIELD_LITERALS) List<Object> literals) {
         super(fieldTransform, function, literals);
     }
 
