@@ -54,12 +54,18 @@ public class LeafPredicate extends TransformPredicate {
         this(new FieldTransform(new FieldRef(fieldIndex, fieldName, type)), function, literals);
     }
 
-    @JsonCreator
     public LeafPredicate(
+            FieldTransform fieldTransform, LeafFunction function, List<Object> literals) {
+        super(fieldTransform, function, literals);
+    }
+
+    @JsonCreator
+    protected static LeafPredicate fromJson(
             @JsonProperty(TransformPredicate.FIELD_TRANSFORM) FieldTransform fieldTransform,
             @JsonProperty(TransformPredicate.FIELD_FUNCTION) LeafFunction function,
             @JsonProperty(TransformPredicate.FIELD_LITERALS) List<Object> literals) {
-        super(fieldTransform, function, literals);
+        List<Object> convertedLiterals = deserializeLiterals(fieldTransform.outputType(), literals);
+        return new LeafPredicate(fieldTransform, function, convertedLiterals);
     }
 
     public LeafFunction function() {
