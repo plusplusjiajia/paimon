@@ -141,7 +141,7 @@ jobs:
       - name: Run lint-python.sh
         shell: bash
         run: |
-          export TMPDIR: ${{ runner.temp }}
+          export TMPDIR="$RUNNER_TEMP"
           mkdir -p "$TMPDIR"
           chmod +x paimon-python/dev/lint-python.sh
           ./paimon-python/dev/lint-python.sh -e pytest_torch
@@ -176,7 +176,7 @@ jobs:
       - name: Run lint-python.sh
         shell: bash
         run: |
-          export TMPDIR: ${{ runner.temp }}
+          export TMPDIR="$RUNNER_TEMP"
           mkdir -p "$TMPDIR"
           chmod +x paimon-python/dev/lint-python.sh
           ./paimon-python/dev/lint-python.sh -i pytest_torch
