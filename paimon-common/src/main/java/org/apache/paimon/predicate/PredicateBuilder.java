@@ -310,7 +310,7 @@ public class PredicateBuilder {
     }
 
     private static void splitCompound(
-            CompoundPredicate.Function function, Predicate predicate, List<Predicate> result) {
+            CompoundFunction function, Predicate predicate, List<Predicate> result) {
         if (predicate instanceof CompoundPredicate
                 && ((CompoundPredicate) predicate).function().equals(function)) {
             for (Predicate child : ((CompoundPredicate) predicate).children()) {
