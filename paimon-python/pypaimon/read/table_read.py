@@ -95,7 +95,7 @@ class TableRead:
         if CoreOptions.blob_as_descriptor(self.table.options):
             return table
 
-        descriptor_fields = CoreOptions.blob_stored_descriptor_fields(self.table.options)
+        descriptor_fields = CoreOptions.blob_descriptor_fields(self.table.options)
         if not descriptor_fields:
             return table
 

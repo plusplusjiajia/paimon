@@ -42,7 +42,7 @@ class DataFileBatchReader(RecordBatchReader):
                  row_tracking_enabled: bool,
                  system_fields: dict,
                  blob_as_descriptor: bool = False,
-                 blob_stored_descriptor_fields: Optional[set] = None,
+                 blob_descriptor_fields: Optional[set] = None,
                  file_io: Optional[FileIO] = None):
         self.format_reader = format_reader
         self.index_mapping = index_mapping
@@ -54,7 +54,7 @@ class DataFileBatchReader(RecordBatchReader):
         self.max_sequence_number = max_sequence_number
         self.system_fields = system_fields
         self.blob_as_descriptor = blob_as_descriptor
-        self.blob_stored_descriptor_fields = blob_stored_descriptor_fields or set()
+        self.blob_descriptor_fields = blob_descriptor_fields or set()
         self.file_io = file_io
         self.blob_field_names = {
             field.name
@@ -63,7 +63,7 @@ class DataFileBatchReader(RecordBatchReader):
         }
         self.descriptor_blob_fields = {
             field_name
-            for field_name in self.blob_stored_descriptor_fields
+            for field_name in self.blob_descriptor_fields
             if field_name in self.blob_field_names
         }
 

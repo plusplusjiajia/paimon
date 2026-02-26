@@ -1084,7 +1084,7 @@ class DataBlobWriterTest(unittest.TestCase):
         print("   - Verified blob data can be read from descriptor")
         print("   - Tested blob-as-descriptor=true read output mode")
 
-    def test_blob_stored_descriptor_fields_mixed_mode(self):
+    def test_blob_descriptor_fields_mixed_mode(self):
         import random
         from pypaimon import Schema
         from pypaimon.table.row.blob import BlobDescriptor
@@ -1138,7 +1138,7 @@ class DataBlobWriterTest(unittest.TestCase):
         self.assertEqual(result.column('pic1').to_pylist()[0], pic1_data)
         self.assertEqual(result.column('pic2').to_pylist()[0], pic2_data)
 
-    def test_blob_stored_descriptor_fields_rejects_non_descriptor_input(self):
+    def test_blob_descriptor_fields_rejects_non_descriptor_input(self):
         from pypaimon import Schema
 
         pa_schema = pa.schema([

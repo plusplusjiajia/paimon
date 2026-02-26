@@ -82,9 +82,9 @@ class DataBlobWriter(DataWriter):
 
         # Determine blob columns from table schema
         self.blob_column_names = self._get_blob_columns_from_schema()
-        self.blob_stored_descriptor_fields = CoreOptions.blob_stored_descriptor_fields(self.options)
+        self.blob_descriptor_fields = CoreOptions.blob_descriptor_fields(self.options)
 
-        unknown_descriptor_fields = self.blob_stored_descriptor_fields.difference(
+        unknown_descriptor_fields = self.blob_descriptor_fields.difference(
             set(self.blob_column_names)
         )
         if unknown_descriptor_fields:
@@ -95,7 +95,7 @@ class DataBlobWriter(DataWriter):
 
         # Blob fields that should still be written to `.blob` files.
         self.blob_file_column_names = [
-            col for col in self.blob_column_names if col not in self.blob_stored_descriptor_fields
+            col for col in self.blob_column_names if col not in self.blob_descriptor_fields
         ]
 
         all_column_names = self.table.field_names
@@ -132,7 +132,7 @@ class DataBlobWriter(DataWriter):
             "stored columns: %s",
             self.blob_column_names,
             self.blob_file_column_names,
-            sorted(self.blob_stored_descriptor_fields),
+            sorted(self.blob_descriptor_fields),
         )
 
     def _get_blob_columns_from_schema(self) -> List[str]:
@@ -219,12 +219,12 @@ class DataBlobWriter(DataWriter):
         return normal_data, blob_data_map
 
     def _validate_descriptor_stored_fields_input(self, data: pa.RecordBatch):
-        if not self.blob_stored_descriptor_fields:
+        if not self.blob_descriptor_fields:
             return
 
         from pypaimon.table.row.blob import BlobDescriptor
 
-        for field_name in self.blob_stored_descriptor_fields:
+        for field_name in self.blob_descriptor_fields:
             if field_name not in data.schema.names:
                 continue
             values = data.column(data.schema.get_field_index(field_name)).to_pylist()
