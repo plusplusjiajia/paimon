@@ -33,13 +33,14 @@ import static java.nio.charset.StandardCharsets.UTF_8;
  * Endian byte order.
  *
  * <pre>
- * | Offset (Bytes) | Field Name    | Type      | Size (Bytes) | Description                                         |
- * |----------------|---------------|-----------|--------------|-----------------------------------------------------|
- * | 0              | version       | byte      | 1            | Serialization structure version                     |
- * | 1              | uriLength     | int       | 4            | Length (N) of the URI string in UTF-8 bytes         |
- * | 5              | uriBytes      | byte[N]   | N            | UTF-8 encoded bytes of the URI string               |
- * | 5 + N          | offset        | long      | 8            | Starting offset of the Blob within the URI resource |
- * | 13 + N         | length        | long      | 8            | Length of the Blob data                             |
+ * | Offset | Field Name    | Type      | Size |
+ * |--------|---------------|-----------|------|
+ * | 0      | version       | byte      | 1    |
+ * | 1      | magicNumber   | long      | 8    |
+ * | 9      | uriLength     | int       | 4    |
+ * | 13     | uriBytes      | byte[N]   | N    |
+ * | 13 + N | offset        | long      | 8    |
+ * | 21 + N | length        | long      | 8    |
  * </pre>
  */
 public class BlobDescriptor implements Serializable {
