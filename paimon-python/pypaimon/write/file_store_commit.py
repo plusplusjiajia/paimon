@@ -633,7 +633,6 @@ class FileStoreCommit:
     def _assign_row_tracking_meta(self, first_row_id_start: int, commit_entries: List[ManifestEntry]):
         """
         Assign row tracking metadata (first_row_id) to new files.
-        This follows the Java implementation logic from FileStoreCommitImpl.assignRowTrackingMeta.
         """
         if not commit_entries:
             return commit_entries, first_row_id_start
