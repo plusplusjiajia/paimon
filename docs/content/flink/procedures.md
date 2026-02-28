@@ -26,7 +26,7 @@ under the License.
 
 # Procedures
 
-Flink 1.18 and later versions support [Call Statements](https://nightlies.apache.org/flink/flink-docs-master/docs/dev/table/sql/call/),
+Flink 1.18 and later versions support [Call Statements](https://nightlies.apache.org/flink/flink-docs-master/docs/sql/reference/utility/call/),
 which make it easier to manipulate data and metadata of Paimon table by writing SQLs instead of submitting Flink jobs.
 
 In 1.18, the procedure only supports passing arguments by position. You must pass all arguments in order, and if you
