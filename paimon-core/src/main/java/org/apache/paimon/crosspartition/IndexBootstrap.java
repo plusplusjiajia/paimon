@@ -61,6 +61,12 @@ public class IndexBootstrap implements Serializable {
     private final FileStoreTable table;
 
     public IndexBootstrap(FileStoreTable table) {
+        if (table.coreOptions().queryAuthEnabled()) {
+            throw new UnsupportedOperationException(
+                    "Cross-partition index bootstrap is not supported on query-auth tables: "
+                            + "the write-side index requires every raw primary key, while row "
+                            + "authorization may hide keys and corrupt upsert routing.");
+        }
         this.table = table;
     }
 

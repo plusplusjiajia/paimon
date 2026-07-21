@@ -80,6 +80,9 @@ public class TableCommitImpl implements InnerTableCommit {
     private static final Logger LOG = LoggerFactory.getLogger(TableCommitImpl.class);
 
     private final FileStoreCommit commit;
+    // Re-runs the write gate on every mutation: a long-lived committer (a Flink StoreCommitter
+    // reused across checkpoints) must not keep publishing after a rule is granted to its caller.
+    private final Runnable queryAuthCheck;
     @Nullable private final Runnable expireSnapshots;
     @Nullable private final PartitionExpire partitionExpire;
     @Nullable private final TagAutoManager tagAutoManager;
@@ -105,7 +108,8 @@ public class TableCommitImpl implements InnerTableCommit {
             ExpireExecutionMode expireExecutionMode,
             String tableName,
             boolean forceCreatingSnapshot,
-            int threadNum) {
+            int threadNum,
+            Runnable queryAuthCheck) {
         if (partitionExpire != null) {
             commit.withPartitionExpire(partitionExpire);
         }
@@ -129,6 +133,7 @@ public class TableCommitImpl implements InnerTableCommit {
         this.tableName = tableName;
         this.forceCreatingSnapshot = forceCreatingSnapshot;
         this.fileCheckExecutor = FileOperationThreadPool.getExecutorService(threadNum);
+        this.queryAuthCheck = queryAuthCheck;
     }
 
     public boolean forceCreatingSnapshot() {
@@ -199,6 +204,7 @@ public class TableCommitImpl implements InnerTableCommit {
 
     @Override
     public void truncateTable() {
+        queryAuthCheck.run();
         checkCommitted();
         commit.withOperation(Snapshot.Operation.TRUNCATE);
         commit.truncateTable(COMMIT_IDENTIFIER);
@@ -206,6 +212,7 @@ public class TableCommitImpl implements InnerTableCommit {
 
     @Override
     public void truncatePartitions(List<Map<String, String>> partitionSpecs) {
+        queryAuthCheck.run();
         commit.withOperation(Snapshot.Operation.TRUNCATE);
         commit.dropPartitions(partitionSpecs, COMMIT_IDENTIFIER);
     }
@@ -221,6 +228,7 @@ public class TableCommitImpl implements InnerTableCommit {
     }
 
     public boolean rollbackToAsLatest(Tag targetTag) {
+        queryAuthCheck.run();
         checkCommitted();
         boolean success = commit.rollbackToAsLatest(targetTag.trimToSnapshot());
         if (success) {
@@ -267,6 +275,7 @@ public class TableCommitImpl implements InnerTableCommit {
     }
 
     public void commitMultiple(List<ManifestCommittable> committables, boolean checkAppendFiles) {
+        queryAuthCheck.run();
         if (overwritePartition == null) {
             int newSnapshots = 0;
             for (ManifestCommittable committable : committables) {

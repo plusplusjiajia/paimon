@@ -460,6 +460,8 @@ abstract class AbstractFileStoreTable implements FileStoreTable {
 
     @Override
     public TableCommitImpl newCommit(String commitUser) {
+        // every write publishes through here (write builders, truncate, overwrite)
+        QueryAuthChecker.checkWrite(this);
         CoreOptions options = coreOptions();
         return new TableCommitImpl(
                 store().newCommit(commitUser, this),
@@ -471,7 +473,8 @@ abstract class AbstractFileStoreTable implements FileStoreTable {
                 options.snapshotExpireExecutionMode(),
                 name(),
                 options.forceCreatingSnapshot(),
-                options.fileOperationThreadNum());
+                options.fileOperationThreadNum(),
+                () -> QueryAuthChecker.checkWrite(this));
     }
 
     @Override
@@ -518,6 +521,7 @@ abstract class AbstractFileStoreTable implements FileStoreTable {
 
     @Override
     public void rollbackTo(long snapshotId) {
+        QueryAuthChecker.checkWrite(this);
         SnapshotManager snapshotManager = snapshotManager();
         try {
             snapshotManager.rollback(Instant.snapshot(snapshotId));
@@ -543,6 +547,7 @@ abstract class AbstractFileStoreTable implements FileStoreTable {
 
     @Override
     public void rollbackTo(String tagName) {
+        QueryAuthChecker.checkWrite(this);
         SnapshotManager snapshotManager = snapshotManager();
         try {
             snapshotManager.rollback(Instant.tag(tagName));
@@ -727,11 +732,13 @@ abstract class AbstractFileStoreTable implements FileStoreTable {
 
     @Override
     public void fastForward(String branchName) {
+        QueryAuthChecker.checkWrite(this);
         branchManager().fastForward(branchName);
     }
 
     @Override
     public void mergeBranch(String sourceBranch, String targetBranch) {
+        QueryAuthChecker.checkWrite(this);
         branchManager().mergeBranch(sourceBranch, targetBranch);
     }
 

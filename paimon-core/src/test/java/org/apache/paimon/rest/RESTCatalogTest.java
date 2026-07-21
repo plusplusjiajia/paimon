@@ -30,6 +30,7 @@ import org.apache.paimon.catalog.Identifier;
 import org.apache.paimon.catalog.PropertyChange;
 import org.apache.paimon.consumer.ConsumerInfo;
 import org.apache.paimon.consumer.ConsumerManager;
+import org.apache.paimon.crosspartition.IndexBootstrap;
 import org.apache.paimon.data.BinaryString;
 import org.apache.paimon.data.GenericRow;
 import org.apache.paimon.data.InternalRow;
@@ -4214,6 +4215,114 @@ public abstract class RESTCatalogTest extends CatalogTestBase {
             long fileSizeInBytes,
             long fileCount,
             long lastFileCreationTime);
+
+    private Identifier createQueryAuthTable(String name) throws Exception {
+        Identifier identifier = Identifier.create("test_table_db", name);
+        catalog.createDatabase(identifier.getDatabaseName(), true);
+        List<DataField> fields = new ArrayList<>();
+        fields.add(new DataField(0, "id", DataTypes.INT()));
+        fields.add(new DataField(1, "name", DataTypes.STRING()));
+        catalog.createTable(
+                identifier,
+                new Schema(
+                        fields,
+                        Collections.emptyList(),
+                        Collections.emptyList(),
+                        Collections.singletonMap(QUERY_AUTH_ENABLED.key(), "true"),
+                        ""),
+                true);
+        return identifier;
+    }
+
+    private void restrictReads(Identifier identifier) {
+        setRowFilter(
+                identifier,
+                Collections.singletonList(
+                        new LeafPredicate(
+                                GreaterThan.INSTANCE,
+                                DataTypes.INT(),
+                                0,
+                                "id",
+                                Collections.singletonList(2))));
+    }
+
+    private List<CommitMessage> prepare(Table table) throws Exception {
+        BatchTableWrite write = table.newBatchWriteBuilder().newWrite();
+        write.write(GenericRow.of(1, BinaryString.fromString("a")));
+        List<CommitMessage> messages = write.prepareCommit();
+        write.close();
+        return messages;
+    }
+
+    @Test
+    void testWriteRejectedWhenCallerReadsAreRestricted() throws Exception {
+        Identifier identifier = createQueryAuthTable("auth_write_restricted");
+        restrictReads(identifier);
+
+        Table table = catalog.getTable(identifier);
+        assertThatThrownBy(() -> table.newBatchWriteBuilder().newCommit())
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("Writes to this query-auth table are not supported");
+    }
+
+    @Test
+    void testWriteAllowedWhenCallerHasNoRules() throws Exception {
+        Identifier identifier = createQueryAuthTable("auth_write_unrestricted");
+        Table table = catalog.getTable(identifier);
+        List<CommitMessage> messages = prepare(table);
+        try (BatchTableCommit commit = table.newBatchWriteBuilder().newCommit()) {
+            commit.commit(messages);
+        }
+        assertThat(((FileStoreTable) catalog.getTable(identifier)).latestSnapshot()).isPresent();
+    }
+
+    @Test
+    void testCommitterIsRecheckedAfterRuleIsGranted() throws Exception {
+        Identifier identifier = createQueryAuthTable("auth_write_stale_committer");
+        Table table = catalog.getTable(identifier);
+        List<CommitMessage> messages = prepare(table);
+
+        // committer obtained while the caller is still unrestricted
+        BatchTableCommit commit = table.newBatchWriteBuilder().newCommit();
+
+        // the rule is granted afterwards: a long-lived committer must not keep publishing
+        restrictReads(identifier);
+
+        assertThatThrownBy(() -> commit.commit(messages))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("Writes to this query-auth table are not supported");
+    }
+
+    @Test
+    void testDataMutationsOutsideCommitAreRejected() throws Exception {
+        Identifier identifier = createQueryAuthTable("auth_write_rollback");
+        Table table = catalog.getTable(identifier);
+        List<CommitMessage> messages = prepare(table);
+        try (BatchTableCommit commit = table.newBatchWriteBuilder().newCommit()) {
+            commit.commit(messages);
+        }
+
+        restrictReads(identifier);
+        FileStoreTable restricted = (FileStoreTable) catalog.getTable(identifier);
+        long snapshotId = restricted.latestSnapshot().get().id();
+
+        // rollback and branch fast-forward change visible data without going through newCommit
+        assertThatThrownBy(() -> restricted.rollbackTo(snapshotId))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("Writes to this query-auth table are not supported");
+        assertThatThrownBy(() -> restricted.fastForward("any_branch"))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("Writes to this query-auth table are not supported");
+    }
+
+    @Test
+    void testIndexBootstrapRejectedOnQueryAuthTable() throws Exception {
+        Identifier identifier = createQueryAuthTable("auth_index_bootstrap");
+        FileStoreTable table = (FileStoreTable) catalog.getTable(identifier);
+        assertThatThrownBy(() -> new IndexBootstrap(table))
+                .isInstanceOf(UnsupportedOperationException.class)
+                .hasMessageContaining("Cross-partition index bootstrap is not supported");
+    }
 
     protected abstract void setColumnMasking(
             Identifier identifier, Map<String, Transform> columnMasking);

@@ -83,6 +83,11 @@ public class TableQueryAuthResult implements Serializable {
         return new DataFilePlan<>(authSplits);
     }
 
+    /** Whether any row filter or column mask applies to the calling principal. */
+    public boolean hasRules() {
+        return extractPredicate() != null || !extractColumnMasking().isEmpty();
+    }
+
     @Nullable
     public Predicate extractPredicate() {
         Predicate rowFilter = null;
