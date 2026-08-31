@@ -161,6 +161,8 @@ jobs:
       - name: Run lint-python.sh
         shell: bash
         run: |
+          export TMPDIR="$RUNNER_TEMP"
+          mkdir -p "$TMPDIR"
           chmod +x paimon-python/dev/lint-python.sh
           if [[ "${{ matrix.python-version }}" == "3.11" ]]; then
             export PYPAIMON_TEST_NATIVE_PLAN=1
@@ -198,6 +200,8 @@ jobs:
       - name: Run lint-python.sh
         shell: bash
         run: |
+          export TMPDIR="$RUNNER_TEMP"
+          mkdir -p "$TMPDIR"
           chmod +x paimon-python/dev/lint-python.sh
           ./paimon-python/dev/lint-python.sh -i pytest_torch
 
