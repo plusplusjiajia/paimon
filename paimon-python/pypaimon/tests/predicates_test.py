@@ -442,6 +442,63 @@ class PredicateTest(unittest.TestCase):
         predicate = predicate_builder.like('f1', '%bc')
         _check_filtered_result(table.new_read_builder().with_filter(predicate), self.df.loc[0:2])
 
+    def test_null_literal_matches_nothing(self):
+        # two commits to one bucket, so the read merges and filters row by row
+        self.catalog.create_table('default.test_pk_merge', Schema.from_pyarrow_schema(
+            pa.schema([('f0', pa.int64()), ('f1', pa.string())]),
+            primary_keys=['f0'], options={'bucket': '1'}), False)
+        merge_table = self.catalog.get_table('default.test_pk_merge')
+        for df in (self.df, self.df.loc[[0]]):
+            write_builder = merge_table.new_batch_write_builder()
+            write = write_builder.new_write()
+            commit = write_builder.new_commit()
+            write.write_pandas(df)
+            commit.commit(write.prepare_commit())
+            write.close()
+            commit.close()
+
+        for table_name in ('default.test_append', 'default.test_pk', 'default.test_pk_merge'):
+            table = self.catalog.get_table(table_name)
+            predicate_builder = table.new_read_builder().new_predicate_builder()
+            predicates = [
+                predicate_builder.equal('f1', None),
+                predicate_builder.not_equal('f1', None),
+                predicate_builder.less_than('f1', None),
+                predicate_builder.less_or_equal('f1', None),
+                predicate_builder.greater_than('f1', None),
+                predicate_builder.greater_or_equal('f1', None),
+                predicate_builder.between('f1', None, 'b'),
+                predicate_builder.not_between('f1', 'a', None),
+                predicate_builder.startswith('f1', None),
+                predicate_builder.endswith('f1', None),
+                predicate_builder.contains('f1', None),
+                predicate_builder.like('f1', None),
+            ]
+            for predicate in predicates:
+                with self.subTest(table=table_name, method=predicate.method):
+                    _check_filtered_result(
+                        table.new_read_builder().with_filter(predicate), self.df.iloc[0:0])
+
+    def test_null_literal_by_value_and_stats(self):
+        fields = [DataField(0, 'f0', 'STRING')]
+        record = GenericRow(['None'], fields)
+        stats = SimpleStats(
+            min_values=GenericRow(['a'], fields),
+            max_values=GenericRow(['z'], fields),
+            null_counts=[0],
+        )
+        for method, literals in (('equal', [None]), ('notEqual', [None]), ('lessThan', [None]),
+                                 ('lessOrEqual', [None]), ('greaterThan', [None]),
+                                 ('greaterOrEqual', [None]), ('between', [None, 'z']),
+                                 ('notBetween', ['a', None]), ('startsWith', [None]),
+                                 ('endsWith', [None]), ('contains', [None]), ('like', [None])):
+            predicate = Predicate(method=method, index=0, field='f0', literals=literals)
+            with self.subTest(method=method):
+                # like must not read a null pattern as the string 'None'
+                self.assertFalse(predicate.test(record))
+                if method not in ('endsWith', 'contains', 'like'):
+                    self.assertFalse(predicate.test_by_simple_stats(stats, 10))
+
     def test_and_predicates(self):
         table = self.catalog.get_table('default.test_append')
         predicate_builder = table.new_read_builder().new_predicate_builder()
